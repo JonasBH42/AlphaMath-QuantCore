@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler
 import joblib
 
 # Specify the path to your CSV file
-csv_file = "C:/Users/User/Desktop/Projects/Backtest/Csvs/NQ1!_MAIN_1D.csv"
+csv_file = "C:/Users/User/Desktop/AlphaMath-QuantCore/Backtest/Csvs/NQ1!_MAIN_1D.csv"
 
 # Read the CSV file; here we read the raw CSV without date parsing initially.
 try:
@@ -116,7 +116,7 @@ lasso.fit(X_train_scaled, y_train)
 # Import joblib for model saving
 
 # Save the trained Lasso model
-model_path = "C:/Users/User/Desktop/Projects/Backtest/lasso_model.joblib"
+model_path = "C:/Users/User/Desktop/AlphaMath-QuantCore/Backtest/lasso_model.joblib"
 joblib.dump(lasso, model_path)
 print(f"Model saved to: {model_path}")
 
