@@ -1,0 +1,31 @@
+
+
+Enter EMA length: "8"
+Enter SMA length: "13"
+Enter SMI length: "10"
+Training MAE: 0.4317
+Training MSE: 0.4791
+Wining Ratio: 56.039%
+Risk Reward Ratio: 1.580
+Total: 59337.0
+
+
+Enter EMA length: Enter SMA length: Enter SMI length: Training MAE: 0.4342
+Training MSE: 0.4817
+Wining Ratio: 55.678%
+Risk Reward Ratio: 1.539
+Total: 56039.75
+
+
+Enter EMA length: Enter SMA length: Enter SMI length: Training MAE: 0.4376
+Training MSE: 0.4839
+Wining Ratio: 57.482%
+Risk Reward Ratio: 1.561
+Total: 57736.25
+
+
+Enter EMA length: Enter SMA length: Enter SMI length: Training MAE: 0.4363
+Training MSE: 0.4834
+Wining Ratio: 58.159%
+Risk Reward Ratio: 1.679
+Total: 66806.75

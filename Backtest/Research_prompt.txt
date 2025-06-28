@@ -1,0 +1,38 @@
+Intraday Machine Learning Research for NQ and ES Futures
+
+Objective:
+Conduct a comprehensive investigation into the most effective intraday trading methods for Nasdaq E-mini (NQ) and S\&P 500 E-mini (ES) futures that leverage machine learning techniques.
+
+Scope:
+    - Focus exclusively on machine learning approaches (e.g., regression, classification, deep learning, reinforcement learning, ensemble methods).
+    - Analyze intraday timeframes: 1-minute, 5-minute, 15-minute, 30-minute, and 60-minute bars.
+    - Markets under study: NQ1! (Nasdaq E-mini) and ES1! (S\&P 500 E-mini).
+
+Source Requirements:
+    - Use only reliable sources by default: peer-reviewed academic journals, conference proceedings, publications from reputable financial institutions, and recognized research organizations.
+    - Exclude non-verified blogs, forum discussions, and retail education content unless directly supported by credible studies.
+
+Deliverables:
+1. Annotated Bibliography:
+   - Top 10–15 machine learning–based intraday trading methods applied to NQ and ES futures.
+
+2. Method Summaries:
+   For each approach, detail:
+   - Core algorithm and theoretical rationale
+   - Input features and data preprocessing steps
+   - Model validation strategy (out-of-sample testing, walk-forward analysis)
+   - Key performance metrics (Sharpe ratio, drawdown, precision/recall, etc.)
+
+3. Comparative Analysis:
+   - Tabular comparison of performance, strengths, and limitations across methods.
+
+4. Implementation Guidelines:
+   - Recommended software libraries, computational requirements, and potential pitfalls.
+
+5. Research Recommendations:
+   - Suggestions for further investigation and possible integration of complementary methods.
+
+Constraints and Considerations:
+   - Prioritize methods validated over the past 10 years with documented out-of-sample results.
+   - Highlight studies that compare multiple approaches on identical datasets.
+   - Provide precise citations for every referenced study
