@@ -7,8 +7,8 @@ import gc
 
 
 
-# 1. Load your data and compute the volatility series
-df = pd.read_csv("C:/Users/User/Desktop/Projects/Backtest/Csvs/NQ1!_MAIN_1D.csv")
+# 1. Load your df and compute the volatility series
+df = pd.read_csv("C:/Users/User/Desktop/AlphaMath-QuantCore/Backtest/Csvs/NQ1!_MAIN_1D.csv")
 df['volatility'] = abs(df['close'] - df['open']).dropna() * 0.1  # Adjusting volatility scale
 
 # 2. Fit GARCH(1,1)
@@ -17,8 +17,17 @@ res   = model.fit(disp='off', update_freq=1)
 
 # 3. Pull in-sample “forecast” ⇒ conditional volatility
 df['vol_forecast'] = res.conditional_volatility.dropna()
+df['vol_forecast'] = df['vol_forecast'] * 1.8
+# True Range (TR)
+df["tr"] = np.maximum.reduce([
+    df["high"] - df["low"],
+    (df["high"] - df["close"].shift(1)).abs(),
+    (df["low"] - df["close"].shift(1)).abs()
+])
 
-print(df['vol_forecast'].dropna().head())
+# Average True Range (ATR) over a 14-day window
+df["ATR"] = df["tr"].rolling(window=1, min_periods=1).mean()
+
 
 std_resid = res.std_resid.dropna()
 lb1 = acorr_ljungbox(std_resid, lags=[10, 20], return_df=True)
@@ -31,7 +40,7 @@ print(res.summary())
 # 4. Plot
 plt.figure(figsize=(10, 4))
 plt.plot(df['volatility'],    label='Observed Volatility')
-plt.plot(df['vol_forecast']*1.8,   label='GJR-GARCH(2, 2, 2) with AR mean', color='red')
+plt.plot(df['vol_forecast'],   label='GJR-GARCH(2, 2, 2) with AR mean', color='red')
 plt.legend()
 plt.title('Close-Open Volatility vs. GJR-GARCH(2, 2, 2) with AR mean')
 plt.show()

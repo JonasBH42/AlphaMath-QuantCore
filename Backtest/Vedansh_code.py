@@ -4,12 +4,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.linear_model import Lasso
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from arch import arch_model
 from sklearn.preprocessing import StandardScaler
 import joblib
 
 # Specify the path to your CSV file
 csv_file = "C:/Users/User/Desktop/AlphaMath-QuantCore/Backtest/Csvs/NQ1!_MAIN_1D.csv"
-
 # Read the CSV file; here we read the raw CSV without date parsing initially.
 try:
     data = pd.read_csv(csv_file)
@@ -59,6 +59,22 @@ data["return"] = (
 data["lag1_return"] = data["return"].shift(1)
 data["lag2_return"] = data["return"].shift(2)
 
+# True Range (TR)
+data["tr"] = np.maximum.reduce(
+    [
+        data["high"] - data["low"],
+        (data["high"] - data["close"].shift(1)).abs(),
+        (data["low"] - data["close"].shift(1)).abs(),
+    ]
+)
+
+# Average True Range (ATR) over a 14-day window
+data["ATR"] = (data["tr"].rolling(window=14, min_periods=1).mean()) * 2
+data["lag1_ATR"] = data["ATR"].shift(1)
+
+data["garch_volatility"] = arch_model(data['return'], mean="ARX", lags=5, vol="GARCH", p=2, o=2, q=2, dist="skewt").fit(disp="off", update_freq=1).conditional_volatility * 0.9  # Adjusting volatility scale
+
+
 # Rolling metrics: rolling standard deviation of the return (in points) over 10-day and 20-day windows
 data["roll_std_10"] = data["return"].rolling(window=10).std()
 data["roll_std_20"] = data["return"].rolling(window=20).std()
@@ -107,10 +123,12 @@ scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
+# Adjusting volatility scale
+
 # -----------------------
 # Lasso Regression Model Training
 # -----------------------
-lasso = Lasso(alpha=0.01, max_iter=10000)
+lasso = Lasso(alpha=0.01, max_iter=100000)
 lasso.fit(X_train_scaled, y_train)
 
 # Import joblib for model saving
@@ -139,11 +157,54 @@ results["trade"] = np.where(results["predicted_close"] > results["open"], "BUY",
 
 # Calculate PnL: if BUY, use the day's 'return' (points); if SELL, use the negative of the day's 'return'
 
-results['pnl'] = results.apply(lambda row: (-100 if abs(row["low"] - row["open"]) >= 100 else row['return']) if row['trade'] == 'BUY'
-                               else (-100 if abs(row["high"] - row["open"]) >= 100 else -row['return']), axis=1)
+
 # results["pnl"] = results.apply(
-#     lambda row: row["return"] if row["trade"] == "BUY" else -row["return"], axis=1
+#     lambda row: (
+#         (-100 if abs(row["low"] - row["open"]) >= 100 else row["return"])
+#         if row["trade"] == "BUY"
+#         else (-100 if abs(row["high"] - row["open"]) >= 100 else -row["return"])
+#     ),
+#     axis=1,
 # )
+
+
+# results["pnl"] = results.apply(
+#     lambda row: (
+#         (-row["garch_volatility"] if abs(row["low"] - row["open"]) >= row["garch_volatility"] else row["return"])
+#         if row["trade"] == "BUY"
+#         else (
+#             -row["garch_volatility"]
+#             if abs(row["high"] - row["open"]) >= row["garch_volatility"]
+#             else -row["return"]
+#         )
+#     ),
+#     axis=1,
+# )
+
+
+results["pnl"] = results.apply(
+    lambda row: row["return"] if row["trade"] == "BUY" else -row["return"], axis=1
+)
+
+
+stop_hits = (
+    (
+        (results["trade"] == "BUY")
+        & ((results["open"] - results["low"]) >= results["garch_volatility"])
+    )
+    | (
+        (results["trade"] == "SELL")
+        & ((results["high"] - results["open"]) >= results["garch_volatility"])
+    )
+).sum()
+print("Number of bars where stop would have hit:", stop_hits)
+
+stop_active = (
+    (results["trade"] == "BUY") & ((results["pnl"] == -results["garch_volatility"]))
+    | ((results["trade"] == "SELL") & ((results["pnl"] == -results["garch_volatility"])))
+).sum()
+print("Number of bars where stop would have been active:", stop_active)
+
 
 # -----------------------
 # Additional Metrics: Average Winner, Average Loser, and Risk/Reward Ratio (RRR)
@@ -236,7 +297,7 @@ plt.show()
 
 # Calculate the running maximum of the equity and the drawdown percentage
 results["running_max"] = results["equity"].cummax()
-results["drawdown"] = (results["running_max"] - results["equity"])
+results["drawdown"] = results["running_max"] - results["equity"]
 
 # Plot the Drawdown
 plt.figure(figsize=(14, 7))
