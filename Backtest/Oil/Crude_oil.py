@@ -30,6 +30,7 @@ from statsmodels.stats.multitest import multipletests
 # -------------------------------------------------------------
 
 CSV_PATH = r"C:/Users/User/Desktop/AlphaMath-QuantCore/Backtest/Csvs/Crude_Oil_1D.csv"
+DXY_PATH = r"C:/Users/User/Desktop/AlphaMath-QuantCore/Backtest/Csvs/DXY.csv"
 DATE_COL  = "datetime"            # <-- adjust if necessary
 OPEN_COL  = "open"
 CLOSE_COL = "close"
@@ -37,7 +38,7 @@ CLOSE_COL = "close"
 # -------------------------------------------------------------
 def load_data(path=CSV_PATH) -> pd.DataFrame:
     df = pd.read_csv(path, parse_dates=[DATE_COL])
-    df = df.sort_values(DATE_COL).set_index(DATE_COL)
+    # df = df.sort_values(DATE_COL).set_index(DATE_COL)
     #  create binary “direction” target: 1 = up-day, 0 = down/flat
     df["direction"] = (df[CLOSE_COL] > df[OPEN_COL]).astype(int)
     return df
@@ -130,9 +131,12 @@ def multivariate_l1_selector(features: pd.DataFrame, y: pd.Series, n_splits=5):
 # -----------------------------------------------------------------
 if __name__ == "__main__":
     df = load_data()
-
+    dxy = pd.read_csv(DXY_PATH, parse_dates=[DATE_COL])
     # --- EXAMPLE FEATURE ENGINEERING (DELETE / EXTEND AS YOU WISH) -------
     features = pd.DataFrame(index=df.index)
+    features["dxy"] = df[DATE_COL].map(dxy.set_index(DATE_COL)[CLOSE_COL])
+    features["dxy_realized_vol"] = dxy[CLOSE_COL].pct_change().rolling(20).std()
+    features["dxy_lag_realized_vol"] = features["dxy_realized_vol"].shift(1)
     features["trend_z"] = (df[CLOSE_COL] - df[CLOSE_COL].rolling(20).mean()) / df[CLOSE_COL].rolling(20).std()
     features["return"] = df[CLOSE_COL].diff().fillna(0)
     features["roll_std_20"] = df[CLOSE_COL].rolling(20).std()

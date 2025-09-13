@@ -9,7 +9,8 @@ from sklearn.metrics import mean_squared_error, r2_score
 
 # === CONFIG ===
 CSV_PATH = r"C:/Users/User/Desktop/AlphaMath-QuantCore/Backtest/Csvs/Crude_Oil_1D.csv"
-DXY_PATH = r"C:/Users/User/Desktop/AlphaMath-QuantCore/Backtest/Csvs/DXY.csv"
+INVENTORIES_PATH = r"C:/Users/User/Desktop/AlphaMath-QuantCore/Backtest/Csvs/inventories_converted.csv"
+XOM_PATH = r"C:/Users/User/Desktop/AlphaMath-QuantCore/Backtest/Csvs/XOM.csv"
 TARGET_COL = "close"
 OPEN_COL = "open"
 OUTPUT_DIR = r"C:/Users/User/Desktop/AlphaMath-QuantCore/Backtest/Outputs"
@@ -17,25 +18,62 @@ OUTPUT_FILE = os.path.join(OUTPUT_DIR, "Crude_Oil_Lasso_predictions.csv")
 
 # === LOAD ===
 df = pd.read_csv(CSV_PATH)
-dxy = pd.read_csv(DXY_PATH, parse_dates=["datetime"])
+inventories = pd.read_csv(INVENTORIES_PATH)
+xom_data = pd.read_csv(XOM_PATH)
 
 # === FEATURE ENGINEERING PLACEHOLDER ===
 # === YOU SHOULD ADD YOUR FEATURES HERE ===
 # Example:
-df["trend_z"] = (df[TARGET_COL] - df[TARGET_COL].rolling(20).mean()) / df[TARGET_COL].rolling(20).std().shift(1)
-df["return"] = df[TARGET_COL].pct_change().shift(1)
-df["lag_close"] = df[TARGET_COL].shift(1)
-df["EMA_20"] = df[TARGET_COL].ewm(span=20, adjust=False).mean()
-# df["DXY"] = df["datetime"].map(dxy.set_index("datetime")["close"])
+df["trend_z"] = ((df[TARGET_COL] - df[TARGET_COL].rolling(20).mean()) / df[TARGET_COL].rolling(20).std().shift(1)).shift(1)
+# df["return"] = df[TARGET_COL].pct_change().shift(1)
+df["EMA_10"] = (df[TARGET_COL].ewm(span=10, adjust=False).mean()).shift(1)
 
-df = df.dropna()
+df["EMA_50"] = (df[TARGET_COL].ewm(span=50, adjust=False).mean()).shift(1)
+df["EMA_30"] = (df[TARGET_COL].ewm(span=30, adjust=False).mean()).shift(1)
+df["EMA_diff"] = df["EMA_50"] - df["EMA_30"]
+
+def get_most_recent_inventory(current_date, inventories_df):
+    # Filter inventories for dates before current_date
+    mask = inventories_df["datetime"] < current_date
+    if mask.any():
+        # Get the most recent date that's still before current_date
+        most_recent_idx = inventories_df.loc[mask, "datetime"].idxmax()
+        return inventories_df.loc[most_recent_idx, "actual"]
+    else:
+        return np.nan
+
+def get_most_recent_forecast(current_date, inventories_df):
+    # Filter inventories for dates before current_date
+    mask = inventories_df["datetime"] < current_date
+    if mask.any():
+        # Get the most recent date that's still before current_date
+        most_recent_idx = inventories_df.loc[mask, "datetime"].idxmax()
+        return inventories_df.loc[most_recent_idx, "forecast"]
+    else:
+        return np.nan
+
+df["inventories_actual"] = df["datetime"].apply(lambda x: get_most_recent_inventory(x, inventories))
+df["inventories_forecast"] = df["datetime"].apply(lambda x: get_most_recent_forecast(x, inventories))
+df["actual_forecast_surprise"] = df["inventories_actual"] - df["inventories_forecast"]
+# Calculate surprise statistics with rolling window
+window_size = 20
+df["surprise_mean"] = df["actual_forecast_surprise"].rolling(window=window_size).mean(2)
+df["surprise_std"] = df["actual_forecast_surprise"].rolling(window=window_size).std(2)
+df["actual_forecast_pct_diff"] = (df["actual_forecast_surprise"] - df["surprise_mean"]) / df["surprise_std"]
+
+df["actual_pct_diff"] = df["inventories_actual"]
+
+
+df["MFI"] = (df["close"].diff(1) / df["close"].shift(1)).rolling(window=24).mean().shift(1)  # Example feature, modify as needed
+
+# df["RSI"] = (df["close"].diff(1) / df["close"].shift(1)).rolling(window=14).mean()  # Example feature, modify as needed
 
 # After adding features, drop NaNs introduced by rolling/shifting
 df = df.dropna().reset_index(drop=True)
 
 # === SELECT FEATURES AND TARGET ===
 # Automatically take everything except target and open as features
-feature_cols = ["trend_z", "return", "lag_close", "EMA_20", ]
+feature_cols = [ "EMA_10", "trend_z", "MFI","EMA_diff"]  # Add more features as needed
 if not feature_cols:
     raise RuntimeError("No feature columns detected. Add features before running (see placeholder).")
 
@@ -59,7 +97,7 @@ y_train_s = scaler_y.fit_transform(y_train.values.reshape(-1, 1)).ravel()
 y_test_s = scaler_y.transform(y_test.values.reshape(-1, 1)).ravel()
 
 # === FIT LASSO ===
-lasso = Lasso(alpha=0.01, random_state=42, max_iter=10000)
+lasso = Lasso(alpha=0.01, random_state=42, max_iter=100000)
 lasso.fit(X_train_s, y_train_s)
 
 # === PREDICT ===
@@ -92,6 +130,7 @@ r2 = r2_score(results_df["actual_close"], results_df["predicted_close"])
 # === OUTPUT ===
 print(f"Test sample count: {total}")
 print(f"Directional positive count: {directional_positive} / {total}")
+print(f"Directional positive ratio: {directional_positive / total:.2%}%")
 print(f"RMSE: {rmse:.6f}")
 print(f"R²: {r2:.6f}")
 
@@ -105,7 +144,8 @@ plt.ylabel("Close Price")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
-plt.show()
+
+# plt.show()
 
 # === SAVE ===
 os.makedirs(OUTPUT_DIR, exist_ok=True)

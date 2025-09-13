@@ -17,7 +17,7 @@ res   = model.fit(disp='off', update_freq=1)
 
 # 3. Pull in-sample “forecast” ⇒ conditional volatility
 df['vol_forecast'] = res.conditional_volatility.dropna()
-df['vol_forecast'] = df['vol_forecast'] * 1.8
+df['vol_forecast'] = df['vol_forecast'] * 2.8
 # True Range (TR)
 df["tr"] = np.maximum.reduce([
     df["high"] - df["low"],

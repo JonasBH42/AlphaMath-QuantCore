@@ -22,10 +22,7 @@ df_1m = (
 # 3.  helper to resample OHLCV
 # --------------------------------------------------
 def resample_ohlcv(frame: pd.DataFrame, rule: str) -> pd.DataFrame:
-    """
-    Resample an OHLCV DataFrame using the given pandas offset alias.
-    Keeps right‑label/right‑closed bars (i.e., timestamp = bar close).
-    """
+    
     # Ensure the index is a DatetimeIndex
     if not isinstance(frame.index, pd.DatetimeIndex):
         frame = frame.copy()

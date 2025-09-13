@@ -47,10 +47,9 @@ data.columns = [col.lower() for col in data.columns]
 # Assume the CSV already contains a "return" column in points.
 # Do NOT recalculate return using pct_change(), otherwise you would lose the original points.
 # Calculate various Exponential Moving Averages (EMAs) on the close price
-data["ema10"] = data["close"].ewm(span=10, adjust=False).mean()
-data["ema20"] = data["close"].ewm(span=20, adjust=False).mean()
-data["ema50"] = data["close"].ewm(span=50, adjust=False).mean()
-
+data["ema10"] = (data["close"].ewm(span=10, adjust=False).mean()).shift(1)
+data["ema20"] = (data["close"].ewm(span=20, adjust=False).mean()).shift(1)
+data["ema50"] = (data["close"].ewm(span=50, adjust=False).mean()).shift(1)  # Shift to avoid lookahead bias
 # Use the file's 'return' column (which is in points) as is.
 # Create lagged return features (1-day and 2-day lags)
 data["return"] = (
@@ -72,12 +71,12 @@ data["tr"] = np.maximum.reduce(
 data["ATR"] = (data["tr"].rolling(window=14, min_periods=1).mean()) * 2
 data["lag1_ATR"] = data["ATR"].shift(1)
 
-data["garch_volatility"] = arch_model(data['return'], mean="ARX", lags=5, vol="GARCH", p=2, o=2, q=2, dist="skewt").fit(disp="off", update_freq=1).conditional_volatility * 0.9  # Adjusting volatility scale
+data["garch_volatility"] = arch_model(data['return'], mean="ARX", lags=5, vol="GARCH", p=2, o=2, q=2, dist="skewt").fit(disp="off", update_freq=1).conditional_volatility  # Adjusting volatility scale
 
 
 # Rolling metrics: rolling standard deviation of the return (in points) over 10-day and 20-day windows
-data["roll_std_10"] = data["return"].rolling(window=10).std()
-data["roll_std_20"] = data["return"].rolling(window=20).std()
+data["roll_std_10"] = data["return"].rolling(window=10).std().shift(1)  # Shift to avoid lookahead bias
+data["roll_std_20"] = data["return"].rolling(window=20).std().shift(1)  # Shift to avoid lookahead bias
 
 # Additional feature: lagged close price
 data["lag1_close"] = data["close"].shift(1)
@@ -187,23 +186,23 @@ results["pnl"] = results.apply(
 )
 
 
-stop_hits = (
-    (
-        (results["trade"] == "BUY")
-        & ((results["open"] - results["low"]) >= results["garch_volatility"])
-    )
-    | (
-        (results["trade"] == "SELL")
-        & ((results["high"] - results["open"]) >= results["garch_volatility"])
-    )
-).sum()
-print("Number of bars where stop would have hit:", stop_hits)
+# stop_hits = (
+#     (
+#         (results["trade"] == "BUY")
+#         & ((results["open"] - results["low"]) >= results["garch_volatility"])
+#     )
+#     | (
+#         (results["trade"] == "SELL")
+#         & ((results["high"] - results["open"]) >= results["garch_volatility"])
+#     )
+# ).sum()
+# print("Number of bars where stop would have hit:", stop_hits)
 
-stop_active = (
-    (results["trade"] == "BUY") & ((results["pnl"] == -results["garch_volatility"]))
-    | ((results["trade"] == "SELL") & ((results["pnl"] == -results["garch_volatility"])))
-).sum()
-print("Number of bars where stop would have been active:", stop_active)
+# stop_active = (
+#     (results["trade"] == "BUY") & ((results["pnl"] == -results["garch_volatility"]))
+#     | ((results["trade"] == "SELL") & ((results["pnl"] == -results["garch_volatility"])))
+# ).sum()
+# print("Number of bars where stop would have been active:", stop_active)
 
 
 # -----------------------
